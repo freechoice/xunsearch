@@ -35,6 +35,7 @@ show_usage()
   echo "       --prefix=DIR             Specify install directory, default: $def_prefix"
   echo "       --no-clean               Keep extracted package files after installation completed"
   echo "       --force                  Force to recompile all packages"
+  echo "       --platform               Current Platform type, default linux"
   echo "       --enable-debug           Trun on debug symbol and verbose log info"
   echo "       --enable-memory-cache    Enable memory cache for xs-searchd"
   echo "                                (Notice: This feature may cause unstable on some OS)"
@@ -48,6 +49,7 @@ set_force="no"
 set_no_clean="no"
 mk_add_option=
 xs_add_option=
+platform=
 
 i=0
 while [ $i -lt $# ] ; do
@@ -72,6 +74,9 @@ while [ $i -lt $# ] ; do
         set_force=yes
       fi
 	;;
+  "--platform")
+    platform="$val"
+  ;;
 	"--enable-debug"|"--enable-memory-cache")
 	  xs_add_option="$xs_add_option $arg"
 	;;
@@ -138,8 +143,13 @@ prefix=$set_prefix
 echo $prefix > $HOME/.xs_installed
 
 # compile flags
-export CFLAGS=-O2
-export CXXFLAGS=-O2
+if test "$platform" = "freebsd" then
+  export CFLAGS="-O2 -fPIC"
+  export CXXFLAGS="-O2 -fPIC"
+else 
+  export CFLAGS="-O2"
+  export CXXFLAGS="-O2"
+fi
 echo -n > setup.log
 
 # error function
@@ -184,7 +194,11 @@ if test "$do_install" = "yes" ; then
   tar -xjf ./packages/scws-${new_version}.tar.bz2
   cd scws-$new_version
   echo "Configuring scws ..."
-  ./configure --prefix=$prefix >> ../setup.log 2>&1
+  if test "$platform" = "freebsd" then
+    ./configure --host=x86_64-xunsearch-kfreebsd-gnu --prefix=$prefix >> ../setup.log 2>&1
+  else 
+    ./configure --prefix=$prefix >> ../setup.log 2>&1
+  fi
   if test $? -ne 0 ; then
     setup_abort "configure scws"
   fi
